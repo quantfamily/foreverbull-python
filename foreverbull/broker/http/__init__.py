@@ -1,5 +1,5 @@
-from .backtest import Backtest
-from .service import Service
+from .exceptions import RequestError
+from .http import HTTPClient
 
 
-__all__ = [Backtest, Service]
+__all__ = [HTTPClient, RequestError]

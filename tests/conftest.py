@@ -4,7 +4,7 @@ from threading import Thread
 import json
 
 from foreverbull.broker.socket.models import Configuration, Request, Response
-from foreverbull.backtest import Backtest
+from foreverbull import Foreverbull
 
 
 @pytest.fixture(scope="function")
@@ -23,8 +23,8 @@ def demo(x, y):
 
 @pytest.fixture(scope="function")
 def session():
-    backtest = Backtest()
-    backtest._routes["stock_data"] = demo
+    Foreverbull._routes["stock_data"] = demo
+    backtest = Foreverbull()
     t1 = Thread(target=backtest._on_message)
     local_session = LocalSession(backtest.broker.local_connection()["port"])
 
@@ -40,9 +40,7 @@ class LocalSession:
     def __init__(self, port):
         self.host = "127.0.0.1"
         self.port = port
-        self.config = Configuration(
-            socket_type="requester", host=self.host, port=self.port, listen=False
-        )
+        self.config = Configuration(socket_type="requester", host=self.host, port=self.port, listen=False)
         self.socket = NanomsgSocket(self.config)
 
     def send(self, message):

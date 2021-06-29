@@ -32,13 +32,9 @@ class NanomsgSocket:
         self._configuration = configuration
         socket = self.SOCKETS[configuration.socket_type]
         if configuration.listen:
-            self._socket = socket(
-                listen=f"tcp://{configuration.host}:{configuration.port}"
-            )
+            self._socket = socket(listen=f"tcp://{configuration.host}:{configuration.port}")
         else:
-            self._socket = socket(
-                dial=f"tcp://{configuration.host}:{configuration.port}"
-            )
+            self._socket = socket(dial=f"tcp://{configuration.host}:{configuration.port}")
         self._socket.recv_timeout = configuration.recv_timeout
         self._socket.send_timeout = configuration.send_timeout
         if configuration.listen and configuration.port == 0:

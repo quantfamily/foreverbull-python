@@ -1,8 +1,10 @@
 from sqlalchemy import Column, Integer, Numeric, Date
+from .data import Base
 
 
-class StockData:
+class StockData(Base):
     __tablename__ = "end_of_day"
+    id = Column(Integer, primary_key=True)
     asset_id = Column(Integer)
     session_id = Column(Integer)
     date = Column(Date)

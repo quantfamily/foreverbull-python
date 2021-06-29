@@ -1,6 +1,6 @@
 import logging
 
-from foreverbull.backtest import Backtest
+from foreverbull.foreverbull import Foreverbull
 from foreverbull.worker import Worker
 
 
@@ -12,9 +12,7 @@ def get_logger(name):
     if logger.hasHandlers():
         return logger
     handler = logging.StreamHandler()
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     logger = logging.getLogger(name)
     logger.setLevel("DEBUG")
@@ -23,4 +21,4 @@ def get_logger(name):
     return logger
 
 
-__all__ = [Backtest, Worker]
+__all__ = [Foreverbull, Worker]

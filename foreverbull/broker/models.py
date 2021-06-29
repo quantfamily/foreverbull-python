@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 import json
+from typing import Optional
 
 
 class Base(BaseModel):
@@ -20,8 +21,9 @@ class Database(BaseModel):
     hostname: str
     port: int
     db_name: str
+    dialect: str
 
 
 class Initialization(BaseModel):
     session_id: str
-    database: Database
+    database: Optional[Database]

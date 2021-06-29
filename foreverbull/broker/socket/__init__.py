@@ -1,4 +1,4 @@
-from .socket import NanomsgSocket
+from .socket import NanomsgSocket, SocketClient
 
 
-__all__ = [NanomsgSocket]
+__all__ = [NanomsgSocket, SocketClient]

@@ -1,14 +1,14 @@
 import os
 
-from foreverbull.broker.http import http
-from foreverbull.broker.socket import socket
+from foreverbull.broker.http import HTTPClient
+from foreverbull.broker.socket import SocketClient
 
 
 class Broker:
     def __init__(self, host):
         self._host = host
-        self.http = http.HTTPClient(host)
-        self.socket = socket.SocketClient(host)
+        self.http = HTTPClient(host)
+        self.socket = SocketClient(host)
 
     def local_connection(self):
         return {

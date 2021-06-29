@@ -1,7 +1,6 @@
+from foreverbull.worker.exceptions import WorkerException
 from foreverbull.broker.data.data import Database
 from multiprocessing import Process
-
-import foreverbull
 
 
 class Worker(Process):
@@ -10,20 +9,20 @@ class Worker(Process):
         self._queue = queue
         self._routes = routes
         self.session_id = session_id
-        self.database = Database(session_id=session_id, **database)
-        print(type(self.database))
-        print(dir(self.database))
+        self.database = Database(session_id=session_id, db_conf=database)
 
-    def __call__(self, request):
-        rsp = foreverbull.broker.socket.models.Response(task=request.task)
-        return rsp
+    def _process_request(self, request):
+        if request.task == "eod_stock_data":
+            self._routes["stock_data"](request.data, self.database)
 
     def run(self):
         self.database.connect()
         while True:
-            data = self._queue.get()
-            if data == "None":
-                self._queue.put("None")
-                return
-            if data.task == "eod_stock_data":
-                self._routes["stock_data"](data.data, self.database)
+            try:
+                message = self._queue.get()
+                if message is None or message == "None":
+                    self._queue.put(None)
+                    return
+                self._process_request(message)
+            except Exception as e:
+                raise WorkerException(repr(e))
