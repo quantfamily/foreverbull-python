@@ -13,7 +13,7 @@ class Worker(Process):
 
     def _process_request(self, request):
         if request.task == "eod_stock_data":
-            self._routes["stock_data"](request.data, self.database)
+            rsp = self._routes["stock_data"](request.data, self.database)
 
     def run(self):
         self.database.connect()

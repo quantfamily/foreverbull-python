@@ -46,7 +46,6 @@ class Foreverbull:
             self.backtest = BacktestModel(**rsp)
             self._create_service(self.backtest)
         self._create_session(self.backtest)
-
         t1 = Thread(target=self._on_message)
         t1.start()
         self._run_session()
@@ -74,8 +73,8 @@ class Foreverbull:
                     self._workers.append(w)
                 rsp = foreverbull.broker.socket.models.Response(task="initialize")
             else:
-                rsp = foreverbull.broker.socket.models.Response(task=message.task)
-                self._queue.put(message, block=False)
+                self._worker_requests.put(message)
+                rsp = self._worker_responses.get() 
             self.broker.socket.send(rsp)
 
     def _run_session(self):
