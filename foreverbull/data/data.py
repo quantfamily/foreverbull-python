@@ -1,8 +1,6 @@
-from sqlalchemy.orm import declarative_base
-
-from sqlalchemy import create_engine
 from pandas import read_sql_query
-
+from sqlalchemy import create_engine
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 

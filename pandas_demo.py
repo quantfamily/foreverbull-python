@@ -1,5 +1,4 @@
 import pandas
-
 from sqlalchemy import create_engine
 
 uri = "postgresql://postgres:1234@127.0.0.1:5432/"

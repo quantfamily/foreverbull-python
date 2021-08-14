@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, Numeric, Date
+from sqlalchemy import Column, Date, Integer, Numeric
+
 from .data import Base
 
 

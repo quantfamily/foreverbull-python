@@ -1,9 +1,10 @@
-from foreverbull.broker.socket.socket import NanomsgSocket
-import pytest
-from threading import Thread
+# from foreverbull.broker.socket.socket import NanomsgSocket
 import json
+from threading import Thread
 
-from foreverbull.broker.socket.models import Configuration, Request, Response
+import pytest
+
+# from foreverbull.broker.socket.models import Configuration, Request, Response
 from foreverbull import Foreverbull
 
 

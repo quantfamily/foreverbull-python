@@ -2,6 +2,7 @@ import foreverbull
 
 bull = foreverbull.Foreverbull("")
 
+
 def sample_algo():
     pass
 

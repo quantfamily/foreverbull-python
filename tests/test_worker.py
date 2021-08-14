@@ -1,6 +1,7 @@
-from foreverbull.worker.worker import Worker
 from multiprocessing import Queue
-from foreverbull.broker.socket.models import Request
+
+from foreverbull_core.models.socket import Request
+from foreverbull.worker.worker import Worker
 
 
 def test_worker():

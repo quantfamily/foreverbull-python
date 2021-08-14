@@ -1,6 +1,6 @@
 import pandas
 
-from foreverbull.broker.data.data import Database
+from foreverbull.data.data import Database
 
 
 def test_connect():

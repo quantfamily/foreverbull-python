@@ -3,7 +3,6 @@ import logging
 from foreverbull.foreverbull import Foreverbull
 from foreverbull.worker import Worker
 
-
 loggers = {}
 
 
