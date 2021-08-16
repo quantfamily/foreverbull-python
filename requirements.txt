@@ -1,4 +1,5 @@
 pandas
+foreverbull-core
 requests
 sqlalchemy
 psycopg2-binary
