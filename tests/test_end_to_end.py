@@ -1,4 +1,5 @@
-import pytest 
+import pytest
+
 
 @pytest.mark.skip()
 def test_message_simulation(sample_data, session):

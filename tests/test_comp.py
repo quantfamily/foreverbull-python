@@ -1,10 +1,7 @@
-import time
 from multiprocessing import Queue
 
-import requests
-import requests_mock
 from foreverbull_core.models.finance import Asset, Order
-from foreverbull_core.models.socket import Request, Response
+from foreverbull_core.models.socket import Request
 from foreverbull_core.models.worker import Parameter, WorkerConfig
 
 from foreverbull import Foreverbull
@@ -52,7 +49,7 @@ def test_route():
     worker_config = WorkerConfig(session_id="123", parameters=[param1, param2])
     req = Request(task="configure", data=worker_config)
     rsp = fb._process(req)
-    
+
     assert rsp.error is None
     assert len(fb._workers) == 1
     assert len(fb._routes) == 1

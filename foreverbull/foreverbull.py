@@ -1,22 +1,29 @@
-import os
+import importlib
+import signal
+import sys
 import threading
 from multiprocessing import Queue
 
 import foreverbull_core
+from foreverbull_core.broker import Broker
 from foreverbull_core.models.finance import Order
 from foreverbull_core.models.socket import Response
 from foreverbull_core.models.worker import WorkerConfig
 from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
 
-from foreverbull_core.broker import Broker
+from foreverbull.input_parser import InputParser
 from foreverbull.worker.worker import Worker
+
+
+class InputError(Exception):
+    pass
 
 
 class Foreverbull(threading.Thread):
     _routes = {}
 
-    def __init__(self, broker, executors=1):
-        self.broker = broker
+    def __init__(self, executors=1):
+        self.broker = None
         self.running = False
         self._worker_requests = Queue()
         self._worker_responses = Queue()
@@ -35,21 +42,40 @@ class Foreverbull(threading.Thread):
 
         return decorator
 
+    def _setup_worker(self, config_file):
+        if not len(self._routes) and config_file is None:
+            raise InputError("Neither route or input module found")
+        if config_file:
+            importlib.import_module(config_file.split(".py")[0])
+            if not len(self._routes):
+                raise InputError("routes in module not found")
+
     def run(self):
+        config = InputParser().parse_input(sys.argv[1:])
+        if not config:
+            return
+        self._setup_worker(config.file)
+        self.broker = Broker(config.broker_url, config.service_id, config.instance_id, config.local_host)
+        signal.signal(signal.SIGTERM, self.stop())
+        self.broker.mark_as_online()
+        self.loop_over_socket(self.broker.socket)
+        self.broker.mark_as_offline()
+
+    def stop(self):
+        self.broker.socket.close()
+
+    def loop_over_socket(self, socket):
         while True:
             try:
-                message = self.broker.socket.recv()
-                rsp = self._process(message)
-                self.broker.socket.send(rsp)
+                message = socket.recv()
+                rsp = self._process_request(message)
+                socket.send(rsp)
             except SocketTimeout:
                 pass
             except SocketClosed:
                 return
 
-    def stop(self):
-        self.broker.socket.close()
-
-    def _process(self, request):
+    def _process_request(self, request):
         rsp = Response(task=request.task)
         try:
             if request.task == "backtest_completed":

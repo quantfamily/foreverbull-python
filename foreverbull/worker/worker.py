@@ -1,8 +1,7 @@
 from multiprocessing import Process
 from multiprocessing.queues import Queue
 
-from foreverbull_core.models.finance import Order
-from foreverbull_core.models.worker import WorkerConfig, Database
+from foreverbull_core.models.worker import Database, WorkerConfig
 
 from foreverbull.worker.exceptions import WorkerException
 

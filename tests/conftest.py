@@ -1,10 +1,10 @@
-# from foreverbull.broker.socket.socket import NanomsgSocket
 import json
 from threading import Thread
 
 import pytest
+from foreverbull_core.models.socket import Request, Response, SocketConfig
+from foreverbull_core.socket.nanomsg import NanomsgSocket
 
-# from foreverbull.broker.socket.models import Configuration, Request, Response
 from foreverbull import Foreverbull
 
 
@@ -41,7 +41,7 @@ class LocalSession:
     def __init__(self, port):
         self.host = "127.0.0.1"
         self.port = port
-        self.config = Configuration(socket_type="requester", host=self.host, port=self.port, listen=False)
+        self.config = SocketConfig(socket_type="requester", host=self.host, port=self.port, listen=False)
         self.socket = NanomsgSocket(self.config)
 
     def send(self, message):
