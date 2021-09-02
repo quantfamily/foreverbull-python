@@ -1,7 +1,8 @@
+import logging
 from multiprocessing import Process
 from multiprocessing.queues import Queue
-
-from foreverbull_core.models.worker import Database, WorkerConfig
+from foreverbull.data import Database
+from foreverbull_core.models.worker import WorkerConfig
 
 from foreverbull.worker.exceptions import WorkerException
 
@@ -14,6 +15,7 @@ class Worker(Process):
         self._routes = routes
         self.session_id = configuration.session_id
         self.database = Database(session_id=configuration.session_id, db_conf=configuration.database)
+        self.logger = logging.getLogger(__name__)
         self.parameters = {}
         if configuration.parameters is None:
             return
@@ -28,10 +30,14 @@ class Worker(Process):
         while True:
             try:
                 request = self._worker_requests.get()
+                self.logger.debug("recieved request")
                 if request is None:
+                    self.logger.info("request is None, shutting downn")
                     self._worker_requests.put(None)
                     return
+                self.logger.debug("processing request")
                 response = self._process_request(request)
+                self.logger.debug("processing done")
                 self._worker_responses.put(response)
             except Exception as e:
                 raise WorkerException(repr(e))

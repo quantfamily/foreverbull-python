@@ -1,6 +1,5 @@
 pandas
-foreverbull-core
+foreverbull-core>=0.0.7
 requests
 sqlalchemy
 psycopg2-binary
-foreverbull-core

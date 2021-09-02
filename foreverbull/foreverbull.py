@@ -1,4 +1,5 @@
 import importlib
+import logging
 import signal
 import sys
 import threading
@@ -22,60 +23,73 @@ class InputError(Exception):
 class Foreverbull(threading.Thread):
     _routes = {}
 
-    def __init__(self, executors=1):
+    def __init__(self):
         self.broker = None
         self.running = False
+        self.logger = logging.getLogger(__name__)
         self._worker_requests = Queue()
         self._worker_responses = Queue()
         self._workers = []
-        self.executors = executors
+        self.executors = 1
         threading.Thread.__init__(self)
 
     @staticmethod
     def on(msg_type):
-        print("HEREE:", msg_type)
-
         def decorator(t):
-            print("Addingg")
             Foreverbull._routes[msg_type] = t
             return t
 
         return decorator
 
     def _setup_worker(self, config_file):
-        if not len(self._routes) and config_file is None:
-            raise InputError("Neither route or input module found")
         if config_file:
-            importlib.import_module(config_file.split(".py")[0])
-            if not len(self._routes):
-                raise InputError("routes in module not found")
+            try:
+                self.logger.info("Importing: ", config_file)
+                importlib.import_module(config_file.split(".py")[0])
+            except ModuleNotFoundError as e:
+                raise InputError(str(e))
+        if not len(self._routes):  
+            raise InputError("Neither route or input module found")
 
     def run(self):
+        self.logger.info("Starting instance")
         config = InputParser().parse_input(sys.argv[1:])
         if not config:
             return
-        self._setup_worker(config.file)
+        if not len(self._routes):
+            self._setup_worker(config.file)
         self.broker = Broker(config.broker_url, config.service_id, config.instance_id, config.local_host)
-        signal.signal(signal.SIGTERM, self.stop())
+        self.executors = config.executors
         self.broker.mark_as_online()
         self.loop_over_socket(self.broker.socket)
         self.broker.mark_as_offline()
+        self.stop()
 
     def stop(self):
-        self.broker.socket.close()
+        self.logger.info("Stopping instance")
+        self._worker_requests.put(None)
+        for worker in self._workers:
+            worker.stop()
+            worker.join()
+        if self.broker:
+            self.broker.socket.close()
 
     def loop_over_socket(self, socket):
         while True:
             try:
+                self.logger.debug("waiting for socket")
                 message = socket.recv()
                 rsp = self._process_request(message)
                 socket.send(rsp)
             except SocketTimeout:
+                self.logger.debug("timeout")
                 pass
             except SocketClosed:
+                self.logger.debug("socket closed")
                 return
 
     def _process_request(self, request):
+        self.logger.debug("processing task: ", request.task)
         rsp = Response(task=request.task)
         try:
             if request.task == "backtest_completed":
@@ -89,6 +103,7 @@ class Foreverbull(threading.Thread):
             else:
                 pass
         except Exception as e:
+            self.logger.error("got unsupported task: ", request.task)
             rsp.error = repr(e)
         return rsp
 
@@ -115,8 +130,9 @@ class Foreverbull(threading.Thread):
         try:
             rsp = self._worker_responses.get(block=True, timeout=5)
         except Exception as e:
-            print("Timeout: ", repr(e))
+            self.logger.warning("exception when processing from worker: ", repr(e))
+            pass
         if rsp is not None and type(rsp) is not Order:
-            print(type(rsp))
-            raise Exception("unexpected response from worker: ", str(rsp))
+            self.logger.error("unexpected response from worker: ", repr(rsp))
+            raise Exception("unexpected response from worker: ", repr(rsp))
         return rsp
