@@ -5,6 +5,7 @@ import sys
 import threading
 from multiprocessing import Queue
 
+import pydantic
 import foreverbull_core
 from foreverbull_core.broker import Broker
 from foreverbull_core.models.finance import Order
@@ -44,7 +45,7 @@ class Foreverbull(threading.Thread):
     def _setup_worker(self, config_file):
         if config_file:
             try:
-                self.logger.info("Importing: ", config_file)
+                self.logger.info(f"Importing: {config_file}")
                 importlib.import_module(config_file.split(".py")[0])
             except ModuleNotFoundError as e:
                 raise InputError(str(e))
@@ -85,11 +86,15 @@ class Foreverbull(threading.Thread):
                 self.logger.debug("timeout")
                 pass
             except SocketClosed:
-                self.logger.debug("socket closed")
+                self.logger.info("socket closed")
+                return
+            except Exception as e:
+                self.logger.error("Unknown exception on socket")
+                self.logger.exception(e)
                 return
 
     def _process_request(self, request):
-        self.logger.debug("processing task: ", request.task)
+        self.logger.debug("processing task: %s", request.task)
         rsp = Response(task=request.task)
         try:
             if request.task == "backtest_completed":
@@ -101,9 +106,9 @@ class Foreverbull(threading.Thread):
             elif request.task == "stock_data":
                 rsp.data = self._stock_data(request.data)
             else:
-                pass
+                self.logger.error("got unsupported task: %s", request.task)
         except Exception as e:
-            self.logger.error("got unsupported task: ", request.task)
+            self.logger.exception(e)
             rsp.error = repr(e)
         return rsp
 
@@ -130,9 +135,9 @@ class Foreverbull(threading.Thread):
         try:
             rsp = self._worker_responses.get(block=True, timeout=5)
         except Exception as e:
-            self.logger.warning("exception when processing from worker: ", repr(e))
+            self.logger.warning("exception when processing from worker: %s", repr(e))
             pass
         if rsp is not None and type(rsp) is not Order:
-            self.logger.error("unexpected response from worker: ", repr(rsp))
-            raise Exception("unexpected response from worker: ", repr(rsp))
+            self.logger.error("unexpected response from worker: %s", repr(rsp))
+            raise Exception("unexpected response from worker: %s", repr(rsp))
         return rsp
