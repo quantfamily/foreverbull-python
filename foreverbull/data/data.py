@@ -11,7 +11,7 @@ class Database:
         if db_conf is None:
             self.uri = "sqlite:///:memory:"
         else:
-            self.uri = f"{db_conf.dialect}://{db_conf.user}:{db_conf.password}@{db_conf.hostname}:{db_conf.port}"
+            self.uri = f"postgresql://{db_conf.user}:{db_conf.password}@{db_conf.netloc}:{db_conf.port}/{db_conf.dbname}"
         self.session_id = session_id
 
     def connect(self):

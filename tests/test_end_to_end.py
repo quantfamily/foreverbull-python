@@ -19,6 +19,7 @@ def test_message_simulation(sample_data, session):
 
 
 def on_message(data, dataframe, ma_high, ma_low):
+    print("high", ma_high)
     pass
 
 def test_simple_simulation():
