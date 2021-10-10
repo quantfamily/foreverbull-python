@@ -10,6 +10,7 @@ def test_worker():
     # TODO: Have worker return stuff to verify
     req_queue = Queue()
     rsp_queue = Queue()
+
     def on_update(request, database):
         pass
 
@@ -21,10 +22,25 @@ def test_worker():
     worker._process_request(req)
 
 
-def test_worker_process():
+def test_worker_process_start_stop():
     queue = Queue()
     worker_conf = WorkerConfig(session_id=123)
     worker = Worker(queue, 123, worker_conf)
     worker.start()
     queue.put(None)
     worker.join()
+
+
+def test_worker():
+    worker_req = Queue()
+    worker_rsp = Queue()
+    worker_config = WorkerConfig(session_id="123")
+
+    def on_message(data, *any):
+        assert data == {"hello": "worker"}
+        return {"hello": "from worker"}
+
+    worker = Worker(worker_req, worker_rsp, worker_config, stock_data=on_message)
+    req = {"hello": "worker"}
+    rsp = {"hello": "from worker"}
+    assert worker._process_request(req) == rsp

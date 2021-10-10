@@ -10,8 +10,7 @@ class InputParser:
         self.executors = 1
         self.service_id = None
         self.instance_id = None
-        self.file = None 
-
+        self.file = None
 
         self.parser = argparse.ArgumentParser(
             prog="foreverbull", formatter_class=argparse.ArgumentDefaultsHelpFormatter
@@ -38,11 +37,11 @@ class InputParser:
             self.service_id = args.service_id
         if args.instance_id:
             self.instance_id = args.instance_id
-        if args.broker_url and args.broker_url != self.parser.get_default('broker_url'):
+        if args.broker_url and args.broker_url != self.parser.get_default("broker_url"):
             self.broker_url = args.broker_url
-        if args.local_host and args.broker_url != self.parser.get_default('local_host'):
+        if args.local_host and args.broker_url != self.parser.get_default("local_host"):
             self.local_host = args.local_host
-        if args.executors and args.broker_url != self.parser.get_default('executors'):
+        if args.executors and args.broker_url != self.parser.get_default("executors"):
             self.executors = args.executors
 
     def _input_is_set(self):

@@ -1,9 +1,10 @@
 import logging
 from multiprocessing import Process
 from multiprocessing.queues import Queue
-from foreverbull.data import Database
+
 from foreverbull_core.models.worker import WorkerConfig
 
+from foreverbull.data import Database
 from foreverbull.worker.exceptions import WorkerException
 
 
@@ -28,7 +29,6 @@ class Worker(Process):
             self.parameters[parameter.key] = parameter.value
         self.logger.debug("worker configured correctly")
 
-
     def _process_request(self, data):
         return self._routes["stock_data"](data, self.database, **self.parameters)
 
@@ -48,6 +48,3 @@ class Worker(Process):
                 self._worker_responses.put(response)
             except Exception as e:
                 raise WorkerException(repr(e))
-
-    def stop(self):
-        return True

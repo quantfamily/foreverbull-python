@@ -5,13 +5,15 @@ import sys
 import threading
 from multiprocessing import Queue
 
-import pydantic
 import foreverbull_core
+import pydantic
 from foreverbull_core.broker import Broker
 from foreverbull_core.models.finance import Order
 from foreverbull_core.models.socket import Response
+from foreverbull_core.socket.router import MessageRouter
 from foreverbull_core.models.worker import WorkerConfig
 from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
+from foreverbull_core.models.finance import EndOfDay
 
 from foreverbull.input_parser import InputParser
 from foreverbull.worker.worker import Worker
@@ -22,7 +24,7 @@ class InputError(Exception):
 
 
 class Foreverbull(threading.Thread):
-    _routes = {}
+    _worker_routes = {}
 
     def __init__(self):
         self.broker = None
@@ -32,12 +34,16 @@ class Foreverbull(threading.Thread):
         self._worker_responses = Queue()
         self._workers = []
         self.executors = 1
+        self._routes = MessageRouter()
+        self._routes.add_route(self._backtest_completed, "backtest_completed")
+        self._routes.add_route(self._configure, "configure", WorkerConfig)
+        self._routes.add_route(self._stock_data, "stock_data", EndOfDay)        
         threading.Thread.__init__(self)
 
     @staticmethod
     def on(msg_type):
         def decorator(t):
-            Foreverbull._routes[msg_type] = t
+            Foreverbull._worker_routes[msg_type] = t
             return t
 
         return decorator
@@ -49,7 +55,7 @@ class Foreverbull(threading.Thread):
                 importlib.import_module(config_file.split(".py")[0])
             except ModuleNotFoundError as e:
                 raise InputError(str(e))
-        if not len(self._routes):  
+        if not len(self._routes):
             raise InputError("Neither route or input module found")
 
     def run(self):
@@ -57,12 +63,16 @@ class Foreverbull(threading.Thread):
         config = InputParser().parse_input(sys.argv[1:])
         if not config:
             return
+        print("HEREEE", flush=True)
         if not len(self._routes):
+            print("SETTING UP", flush=True)
             self._setup_worker(config.file)
+        print("Not SETTING UP", flush=True)
+
         self.broker = Broker(config.broker_url, config.service_id, config.instance_id, config.local_host)
         self.executors = config.executors
         self.broker.mark_as_online()
-        self.loop_over_socket(self.broker.socket)
+        self.loop_over_socket()
         self.broker.mark_as_offline()
         self.stop()
 
@@ -75,13 +85,13 @@ class Foreverbull(threading.Thread):
         if self.broker:
             self.broker.socket.close()
 
-    def loop_over_socket(self, socket):
+    def loop_over_socket(self):
         while True:
             try:
-                self.logger.debug("waiting for socket")
-                message = socket.recv()
-                rsp = self._process_request(message)
-                socket.send(rsp)
+                print("GETTING", flush=True)
+                message = self.broker.socket.recv()
+                rsp = self._router(message)
+                self.broker.socket.send(rsp)
             except SocketTimeout:
                 self.logger.debug("timeout")
                 pass
@@ -93,43 +103,22 @@ class Foreverbull(threading.Thread):
                 self.logger.exception(e)
                 return
 
-    def _process_request(self, request):
-        self.logger.debug("processing task: %s", request.task)
-        rsp = Response(task=request.task)
-        try:
-            if request.task == "backtest_completed":
-                rsp.data = self._backtest_completed()
-            elif request.task == "day_completed":
-                rsp.data = self._day_completed()
-            elif request.task == "configure":
-                rsp.data = self._configure(request.data)
-            elif request.task == "stock_data":
-                rsp.data = self._stock_data(request.data)
-            else:
-                self.logger.error("got unsupported task: %s", request.task)
-        except Exception as e:
-            self.logger.exception(e)
-            rsp.error = repr(e)
-        return rsp
-
     def _backtest_completed(self):
         self._worker_requests.put(None)
         for w in self._workers:
             w.join()
-        return foreverbull_core.models.socket.Response(task="backtest_completed")
+        return
 
-    def _day_completed(self):
-        return foreverbull_core.models.socket.Response(task="day_completed")
-
-    def _configure(self, data):
-        configuration = WorkerConfig(**data)
+    def _configure(self, config: WorkerConfig):
         for _ in range(self.executors):
-            w = Worker(self._worker_requests, self._worker_responses, configuration, **self._routes)
+            w = Worker(self._worker_requests, self._worker_responses, config, **self._worker_routes)
             w.start()
             self._workers.append(w)
-        return foreverbull_core.models.socket.Response(task="configure")
-
-    def _stock_data(self, message):
+        return
+        
+    def _stock_data(self, message: EndOfDay):
+        if len(self._workers) == 0:
+            raise Exception("workers are not initialized")
         self._worker_requests.put(message)
         rsp = None
         try:
