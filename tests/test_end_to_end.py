@@ -1,14 +1,11 @@
-import time
-from unittest import mock
-from unittest.mock import create_autospec
 from datetime import datetime
+
+
 import pytest
-import pytest_mock
-from foreverbull_core.broker import Broker
 from foreverbull_core.http.service import Service
-from foreverbull_core.models.socket import Request, Response
-from foreverbull_core.models.worker import Parameter, WorkerConfig
 from foreverbull_core.models.finance import Asset, EndOfDay
+from foreverbull_core.models.socket import Request
+from foreverbull_core.models.worker import Config, Parameter
 
 from foreverbull.foreverbull import Foreverbull
 from foreverbull.input_parser import InputParser
@@ -28,7 +25,7 @@ def test_simple_simulation(mocker):
     input_parser.file = None
     print("hello", flush=True)
 
-    ## setup
+    # setup
     fb = Foreverbull()
     fb._worker_routes["stock_data"] = on_message
 
@@ -39,14 +36,14 @@ def test_simple_simulation(mocker):
 
     print("STARTED", flush=True)
 
-    ## configure
+    # configure
     param1 = Parameter(key="ma_high", value=64, default=30)
     param2 = Parameter(key="ma_low", value=16, default=90)
-    worker_config = WorkerConfig(session_id="123", parameters=[param1, param2])
+    worker_config = Config(session_id="123", parameters=[param1, param2])
     req = Request(task="configure", data=worker_config)
     rsp = fb._routes(req)
     assert rsp.error is None
-    ## stock_data
+    # stock_data
     a = Asset(sid=123, symbol="AAPL", asset_name="Apple", exchange="QUANDL")
     eod = EndOfDay(
         asset=a,
@@ -59,15 +56,11 @@ def test_simple_simulation(mocker):
         low=1337.6,
         volume=9001,
     )
-    print("SENDING ")
     for _ in range(200):
         req = Request(task="stock_data", data=eod)
         rsp = fb._routes(req)
         assert rsp.error is None
         assert rsp.data is None
-    ## taredown
-    print("SENT")
+    # taredown
     fb._backtest_completed()
-    print("COMPLETED")
     fb.join()
-    assert True == False

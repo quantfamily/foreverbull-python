@@ -1,19 +1,15 @@
 import importlib
 import logging
-import signal
 import sys
 import threading
+import time
 from multiprocessing import Queue
 
-import foreverbull_core
-import pydantic
 from foreverbull_core.broker import Broker
-from foreverbull_core.models.finance import Order
-from foreverbull_core.models.socket import Response
-from foreverbull_core.socket.router import MessageRouter
-from foreverbull_core.models.worker import WorkerConfig
+from foreverbull_core.models.finance import EndOfDay, Order
+from foreverbull_core.models.worker import Instance
 from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
-from foreverbull_core.models.finance import EndOfDay
+from foreverbull_core.socket.router import MessageRouter
 
 from foreverbull.input_parser import InputParser
 from foreverbull.worker.worker import Worker
@@ -36,8 +32,8 @@ class Foreverbull(threading.Thread):
         self.executors = 1
         self._routes = MessageRouter()
         self._routes.add_route(self._backtest_completed, "backtest_completed")
-        self._routes.add_route(self._configure, "configure", WorkerConfig)
-        self._routes.add_route(self._stock_data, "stock_data", EndOfDay)        
+        self._routes.add_route(self._configure, "configure", Instance)
+        self._routes.add_route(self._stock_data, "stock_data", EndOfDay)
         threading.Thread.__init__(self)
 
     @staticmethod
@@ -55,32 +51,40 @@ class Foreverbull(threading.Thread):
                 importlib.import_module(config_file.split(".py")[0])
             except ModuleNotFoundError as e:
                 raise InputError(str(e))
-        if not len(self._routes):
+        if not len(self._worker_routes):
             raise InputError("Neither route or input module found")
 
     def run(self):
         self.logger.info("Starting instance")
         config = InputParser().parse_input(sys.argv[1:])
-        if not config:
+        if config.instance is None and config.backtest_id is None:
             return
-        print("HEREEE", flush=True)
-        if not len(self._routes):
-            print("SETTING UP", flush=True)
-            self._setup_worker(config.file)
-        print("Not SETTING UP", flush=True)
+        self.broker = Broker(config.broker_url, config.local_host)
+        runner = threading.Thread(target=self.loop_over_socket)
+        runner.start()
 
-        self.broker = Broker(config.broker_url, config.service_id, config.instance_id, config.local_host)
         self.executors = config.executors
-        self.broker.mark_as_online()
-        self.loop_over_socket()
-        self.broker.mark_as_offline()
+        if not len(self._worker_routes):
+            print("import: ", config.file)
+            self._setup_worker(config.file)
+
+        if config.instance:
+            self.broker.mark_as_online(config.instance)
+        elif config.backtest_id is not None:
+            self.broker.run_test_run(config.backtest_id)
+
+        try:
+            while self.running:
+                time.sleep(0.5)
+        except KeyboardInterrupt:
+            self.running = False
+
         self.stop()
 
     def stop(self):
         self.logger.info("Stopping instance")
         self._worker_requests.put(None)
         for worker in self._workers:
-            worker.stop()
             worker.join()
         if self.broker:
             self.broker.socket.close()
@@ -88,9 +92,8 @@ class Foreverbull(threading.Thread):
     def loop_over_socket(self):
         while True:
             try:
-                print("GETTING", flush=True)
                 message = self.broker.socket.recv()
-                rsp = self._router(message)
+                rsp = self._routes(message)
                 self.broker.socket.send(rsp)
             except SocketTimeout:
                 self.logger.debug("timeout")
@@ -107,15 +110,16 @@ class Foreverbull(threading.Thread):
         self._worker_requests.put(None)
         for w in self._workers:
             w.join()
+        self.running = False
         return
 
-    def _configure(self, config: WorkerConfig):
+    def _configure(self, config: Instance):
         for _ in range(self.executors):
             w = Worker(self._worker_requests, self._worker_responses, config, **self._worker_routes)
             w.start()
             self._workers.append(w)
         return
-        
+
     def _stock_data(self, message: EndOfDay):
         if len(self._workers) == 0:
             raise Exception("workers are not initialized")

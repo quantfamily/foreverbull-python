@@ -1,5 +1,5 @@
-pandas
-foreverbull-core>=0.0.11
-requests
-sqlalchemy
-psycopg2-binary
+pandas>=1.3.2,<2.0.0
+foreverbull-core>=0.0.12
+requests>=2.26.0,<3.0.0
+sqlalchemy>=1.4.23,<2.0.0
+psycopg2-binary>=2.9.1,<3.0.0

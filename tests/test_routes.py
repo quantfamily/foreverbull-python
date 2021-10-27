@@ -1,11 +1,10 @@
-from multiprocessing import Queue
 from datetime import datetime
+
 from foreverbull_core.models.finance import Asset, EndOfDay, Order
 from foreverbull_core.models.socket import Request, Response
-from foreverbull_core.models.worker import Parameter, WorkerConfig
+from foreverbull_core.models.worker import Instance, Parameter
 
 from foreverbull import Foreverbull
-from foreverbull.worker import Worker
 
 
 def configured_worker(data, dataframe, ma_high, ma_low):
@@ -15,13 +14,15 @@ def configured_worker(data, dataframe, ma_high, ma_low):
     asset = Asset(symbol="TSLA", exchange="QUANDL")
     return Order(asset=asset, amount=10)
 
+
 def test_configure(mocker):
     fb = Foreverbull()
 
-    request = Request(task="configure", data=WorkerConfig(session_id="abc123"))
+    request = Request(task="configure", data=Instance(session_id="abc123"))
     response = Response(task="configure")
     assert fb._routes(request) == response
     fb._backtest_completed()
+
 
 def test_stock_data_configured():
     fb = Foreverbull()
@@ -30,7 +31,7 @@ def test_stock_data_configured():
 
     param1 = Parameter(key="ma_high", value=64, default=30)
     param2 = Parameter(key="ma_low", value=16, default=90)
-    worker_config = WorkerConfig(session_id="123", parameters=[param1, param2])
+    worker_config = Instance(session_id="123", parameters=[param1, param2])
     req = Request(task="configure", data=worker_config)
     rsp = fb._routes(req)
 
@@ -55,6 +56,7 @@ def test_stock_data_configured():
     assert rsp.error is None
     fb._backtest_completed()
 
+
 def test_stock_data_not_configured():
     fb = Foreverbull()
     a = Asset(sid=123, symbol="AAPL", asset_name="Apple", exchange="QUANDL")
@@ -73,6 +75,7 @@ def test_stock_data_not_configured():
     rsp = fb._routes(req)
     assert rsp.error == "Exception('workers are not initialized')"
     assert rsp.data is None
+
 
 def test_backtest_completed():
     fb = Foreverbull()

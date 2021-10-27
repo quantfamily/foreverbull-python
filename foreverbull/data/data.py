@@ -19,9 +19,7 @@ class Database:
     def connect(self):
         self.engine = create_engine(self.uri)
         if self.db_conf is None:
-            print("Creating")
             Base.metadata.create_all(self.engine)
-            print("Tables: ", Base.metadata.tables.keys())
 
     def stock_data(self):
         query = f"""Select asset_id, date, price, high, low, open, close, volume, last_traded
