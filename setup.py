@@ -9,10 +9,15 @@ with pathlib.Path("requirements.txt").open() as requirements_txt:
 
 setup(
     name="foreverbull",
-    version="0.0.7",
-    description="Core Python functionality for Foreverbull",
+    version="0.0.8",
+    description="Foreverbull",
     author="Henrik Nilsson",
     author_email="henrik@lhjnilsson.com",
     packages=find_packages("."),
     install_requires=install_requires,
+    python_requires=">=3.8",
+    classifiers=[
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+    ]
 )
