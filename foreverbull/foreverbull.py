@@ -65,7 +65,6 @@ class Foreverbull(threading.Thread):
 
         self.executors = config.executors
         if not len(self._worker_routes):
-            print("import: ", config.file)
             self._setup_worker(config.file)
 
         if config.instance:

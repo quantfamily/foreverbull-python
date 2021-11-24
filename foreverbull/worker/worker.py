@@ -2,14 +2,14 @@ import logging
 from multiprocessing import Process
 from multiprocessing.queues import Queue
 
-from foreverbull_core.models.worker import Config
+from foreverbull_core.models.worker import Instance
 
 from foreverbull.data import Database
 from foreverbull.worker.exceptions import WorkerException
 
 
 class Worker(Process):
-    def __init__(self, worker_requests: Queue, worker_responses: Queue, configuration: Config, **routes):
+    def __init__(self, worker_requests: Queue, worker_responses: Queue, configuration: Instance, **routes):
         super(Worker, self).__init__()
         self.logger = logging.getLogger(__name__)
         self.logger.debug("setting up worker")

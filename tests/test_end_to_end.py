@@ -1,6 +1,5 @@
 from datetime import datetime
 
-
 import pytest
 from foreverbull_core.http.service import Service
 from foreverbull_core.models.finance import Asset, EndOfDay
