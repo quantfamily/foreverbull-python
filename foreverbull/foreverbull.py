@@ -54,11 +54,17 @@ class Foreverbull(threading.Thread):
         if not len(self._worker_routes):
             raise InputError("Neither route or input module found")
 
-    def run(self):
-        self.logger.info("Starting instance")
+    def _parse_input(self) -> InputParser:
         config = InputParser().parse_input(sys.argv[1:])
         if config.instance is None and config.backtest_id is None:
-            return
+            raise InputError("either run as instance or set backtest-id")
+        return config
+
+    def run(self, config=None):
+        self.running = True
+        self.logger.info("Starting instance")
+        if config is None:
+            config = self._parse_input()
         self.broker = Broker(config.broker_url, config.local_host)
         runner = threading.Thread(target=self.loop_over_socket)
         runner.start()
@@ -68,9 +74,13 @@ class Foreverbull(threading.Thread):
             self._setup_worker(config.file)
 
         if config.instance:
-            self.broker.mark_as_online(config.instance)
+            config.instance.online = True
+            config.instance.listen = True
+            self.broker.http.service.update_instance(config.instance)
         elif config.backtest_id is not None:
             self.broker.run_test_run(config.backtest_id)
+        else:
+            raise InputError("Niether Instance or backtest-id is assigned")
 
         try:
             while self.running:
@@ -78,10 +88,15 @@ class Foreverbull(threading.Thread):
         except KeyboardInterrupt:
             self.running = False
 
+        if config.instance:
+            config.instance.online = False
+            config.instance.listen = False
+            self.broker.http.service.update_instance(config.instance)
         self.stop()
 
     def stop(self):
         self.logger.info("Stopping instance")
+        self.running = False
         self._worker_requests.put(None)
         for worker in self._workers:
             worker.join()
@@ -109,6 +124,7 @@ class Foreverbull(threading.Thread):
         self._worker_requests.put(None)
         for w in self._workers:
             w.join()
+        self._workers = []
         self.running = False
         return
 
@@ -128,6 +144,7 @@ class Foreverbull(threading.Thread):
             rsp = self._worker_responses.get(block=True, timeout=5)
         except Exception as e:
             self.logger.warning("exception when processing from worker: %s", repr(e))
+            self.logger.exception(e)
             pass
         if rsp is not None and type(rsp) is not Order:
             self.logger.error("unexpected response from worker: %s", repr(rsp))

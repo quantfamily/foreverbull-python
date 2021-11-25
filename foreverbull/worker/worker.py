@@ -36,7 +36,7 @@ class Worker(Process):
         self.database.connect()
         while True:
             try:
-                request = self._worker_requests.get()
+                request = self._worker_requests.get(block=True, timeout=5)
                 self.logger.debug("recieved request")
                 if request is None:
                     self.logger.info("request is None, shutting downn")
