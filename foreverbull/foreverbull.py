@@ -8,9 +8,11 @@ from multiprocessing import Queue
 from foreverbull_core.broker import Broker
 from foreverbull_core.models.finance import EndOfDay, Order
 from foreverbull_core.models.worker import Instance
+from foreverbull_core.socket.client import SocketClient
 from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
 from foreverbull_core.socket.router import MessageRouter
-
+from foreverbull_core.models.backtest import Config as BacktestConfig
+from foreverbull_core.models.service import Instance as ServiceInstance
 from foreverbull.input_parser import InputParser
 from foreverbull.worker.worker import Worker
 
@@ -22,14 +24,14 @@ class InputError(Exception):
 class Foreverbull(threading.Thread):
     _worker_routes = {}
 
-    def __init__(self):
-        self.broker = None
+    def __init__(self, socket: SocketClient = None, executors: int = None):
+        self.socket = socket
         self.running = False
         self.logger = logging.getLogger(__name__)
         self._worker_requests = Queue()
         self._worker_responses = Queue()
         self._workers = []
-        self.executors = 1
+        self.executors = executors
         self._routes = MessageRouter()
         self._routes.add_route(self._backtest_completed, "backtest_completed")
         self._routes.add_route(self._configure, "configure", Instance)
@@ -44,71 +46,14 @@ class Foreverbull(threading.Thread):
 
         return decorator
 
-    def _setup_worker(self, config_file):
-        if config_file:
-            try:
-                self.logger.info(f"Importing: {config_file}")
-                importlib.import_module(config_file.split(".py")[0])
-            except ModuleNotFoundError as e:
-                raise InputError(str(e))
-        if not len(self._worker_routes):
-            raise InputError("Neither route or input module found")
-
-    def _parse_input(self) -> InputParser:
-        config = InputParser().parse_input(sys.argv[1:])
-        if config.instance is None and config.backtest_id is None:
-            raise InputError("either run as instance or set backtest-id")
-        return config
-
-    def run(self, config=None):
+    def run(self):
         self.running = True
         self.logger.info("Starting instance")
-        if config is None:
-            config = self._parse_input()
-        self.broker = Broker(config.broker_url, config.local_host)
-        runner = threading.Thread(target=self.loop_over_socket)
-        runner.start()
-
-        self.executors = config.executors
-        if not len(self._worker_routes):
-            self._setup_worker(config.file)
-
-        if config.instance:
-            config.instance.online = True
-            config.instance.listen = True
-            self.broker.http.service.update_instance(config.instance)
-        elif config.backtest_id is not None:
-            self.broker.run_test_run(config.backtest_id)
-        else:
-            raise InputError("Niether Instance or backtest-id is assigned")
-
-        try:
-            while self.running:
-                time.sleep(0.5)
-        except KeyboardInterrupt:
-            self.running = False
-
-        if config.instance:
-            config.instance.online = False
-            config.instance.listen = False
-            self.broker.http.service.update_instance(config.instance)
-        self.stop()
-
-    def stop(self):
-        self.logger.info("Stopping instance")
-        self.running = False
-        self._worker_requests.put(None)
-        for worker in self._workers:
-            worker.join()
-        if self.broker:
-            self.broker.socket.close()
-
-    def loop_over_socket(self):
-        while True:
+        while self.running:
             try:
-                message = self.broker.socket.recv()
+                message = self.socket.recv()
                 rsp = self._routes(message)
-                self.broker.socket.send(rsp)
+                self.socket.send(rsp)
             except SocketTimeout:
                 self.logger.debug("timeout")
                 pass
@@ -119,6 +64,15 @@ class Foreverbull(threading.Thread):
                 self.logger.error("Unknown exception on socket")
                 self.logger.exception(e)
                 return
+
+    def stop(self):
+        self.logger.info("Stopping instance")
+        self.running = False
+        self._worker_requests.put(None)
+        for worker in self._workers:
+            worker.join()
+        if self.broker:
+            self.broker.socket.close()
 
     def _backtest_completed(self):
         self._worker_requests.put(None)
