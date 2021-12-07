@@ -9,6 +9,7 @@ from foreverbull_core.models.service import Instance as ServiceInstance
 
 import importlib
 
+
 class InputError(Exception):
     pass
 
@@ -21,13 +22,13 @@ class InputParser:
         self.service_instance = None
 
     @staticmethod
-    def get_broker():
+    def get_broker() -> Broker:
         broker_url = os.environ.get("BROKER_URL", "127.0.0.1:8080")
         local_host = os.environ.get("LOCAL_HOST", "127.0.0.1")
         return Broker(broker_url, local_host)
 
     @staticmethod
-    def get_backtest_id(args: argparse.Namespace):
+    def get_backtest_id(args: argparse.Namespace) -> str:
         backtest_id = os.environ.get("BACKTEST_ID")
         if args.backtest_id:
             backtest_id = args.backtest_id
@@ -36,7 +37,7 @@ class InputParser:
         return backtest_id
 
     @staticmethod
-    def get_service_instance():
+    def get_service_instance() -> ServiceInstance:
         service_id = os.environ.get("SERVICE_ID")
         instance_id = os.environ.get("INSTANCE_ID")
         if service_id and instance_id:
@@ -48,7 +49,7 @@ class InputParser:
         parser.add_argument("--executors", help="Number of Executors", default="1")
         parser.add_argument("--backtest-id", help="id of backtest")
     
-    def parse(self, args: argparse.Namespace):
+    def parse(self, args: argparse.Namespace) -> None:
         self.algo_file = args.ALGO_FILE
         self.executors = args.executors
         self.broker = InputParser.get_broker()
@@ -56,7 +57,7 @@ class InputParser:
         self.service_instance = InputParser.get_service_instance()
         return
 
-    def setup_worker_file(self):
+    def import_algo_file(self) -> None:
         if not self.algo_file:
             raise InputError("missing algo file")
         try:

@@ -71,8 +71,6 @@ class Foreverbull(threading.Thread):
         self._worker_requests.put(None)
         for worker in self._workers:
             worker.join()
-        if self.broker:
-            self.broker.socket.close()
 
     def _backtest_completed(self):
         self._worker_requests.put(None)

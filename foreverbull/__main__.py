@@ -4,8 +4,11 @@ from foreverbull import input_parser
 from foreverbull.input_parser import InputError, InputParser
 import foreverbull_core.logger
 from foreverbull_core import cli
-
+import logging
 from foreverbull import Foreverbull
+from foreverbull_core.models.service import RawConnection
+from foreverbull_core.models.backtest import Session
+
 
 _service_input = cli.ServiceInput()
 _backtets_input = cli.BacktestInput()
@@ -27,14 +30,26 @@ _run_input.add_arguments(run)
 
 def run_foreverbull(input: InputParser):
     fb = Foreverbull(_run_input.broker.socket, _run_input.executors)
-    input.setup_worker_file()
+    input.import_algo_file()
     fb.start()
-    if input.service_instance:
-        input.service_instance.online = True
-        input.service_instance.listen = True
-        _run_input.broker.http.service.update_instance(input.service_instance)
-    else:
-        input.broker.run_test_run(input.backtest_id)
+
+    try:
+        if input.service_instance:
+            input.service_instance.online = True
+            input.service_instance.listen = True
+            _run_input.broker.http.service.update_instance(input.service_instance)
+        else:
+            session = Session(backtest_id=_run_input.backtest_id, worker_count=0, run_automaticlly=False)
+            conn = RawConnection(host=_run_input.broker._local_host, port=_run_input.broker.socket.config.port)
+            session = _run_input.broker.http.backtest.create_session(_run_input.backtest_id, session=session)
+            _run_input.broker.http.backtest.setup_session(session.backtest_id, session.id)
+            _run_input.broker.http.backtest.configure_session(session.backtest_id, session.id, conn)
+            _run_input.broker.http.backtest.run_session(session.backtest_id, session.id)
+    except Exception as e:
+        logging.error(f"unable to call backend: {repr(e)}")
+        fb.stop()
+        return
+
     try:
         while fb.running:
             time.sleep(0.5)
