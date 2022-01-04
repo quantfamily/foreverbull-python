@@ -5,16 +5,16 @@ import threading
 import time
 from multiprocessing import Queue
 
+from foreverbull.input_parser import InputParser
+from foreverbull.worker.worker import Worker
 from foreverbull_core.broker import Broker
+from foreverbull_core.models.backtest import Config as BacktestConfig
 from foreverbull_core.models.finance import EndOfDay, Order
+from foreverbull_core.models.service import Instance as ServiceInstance
 from foreverbull_core.models.worker import Instance
 from foreverbull_core.socket.client import SocketClient
 from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
 from foreverbull_core.socket.router import MessageRouter
-from foreverbull_core.models.backtest import Config as BacktestConfig
-from foreverbull_core.models.service import Instance as ServiceInstance
-from foreverbull.input_parser import InputParser
-from foreverbull.worker.worker import Worker
 
 
 class InputError(Exception):
@@ -53,7 +53,9 @@ class Foreverbull(threading.Thread):
             try:
                 message = self.socket.recv()
                 rsp = self._routes(message)
+                self.logger.debug(f"recieved task: {rsp.task}")
                 self.socket.send(rsp)
+                self.logger.debug(f"reply sent for task: {rsp.task}")
             except SocketTimeout:
                 self.logger.debug("timeout")
                 pass
@@ -64,6 +66,8 @@ class Foreverbull(threading.Thread):
                 self.logger.error("Unknown exception on socket")
                 self.logger.exception(e)
                 return
+        self.socket.close()
+        self.logger.info("exiting")
 
     def stop(self):
         self.logger.info("Stopping instance")
@@ -94,6 +98,7 @@ class Foreverbull(threading.Thread):
         rsp = None
         try:
             rsp = self._worker_responses.get(block=True, timeout=5)
+            print("I GOT RSP type: ", type(rsp))
         except Exception as e:
             self.logger.warning("exception when processing from worker: %s", repr(e))
             self.logger.exception(e)

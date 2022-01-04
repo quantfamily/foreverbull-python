@@ -1,14 +1,13 @@
-from argparse import ArgumentParser
-import time
-from foreverbull import input_parser
-from foreverbull.input_parser import InputError, InputParser
-import foreverbull_core.logger
-from foreverbull_core import cli
 import logging
-from foreverbull import Foreverbull
-from foreverbull_core.models.service import RawConnection
-from foreverbull_core.models.backtest import Session
+import time
+from argparse import ArgumentParser
 
+import foreverbull_core.logger
+from foreverbull import Foreverbull, input_parser
+from foreverbull.input_parser import InputError, InputParser
+from foreverbull_core import cli
+from foreverbull_core.models.backtest import Session
+from foreverbull_core.models.service import RawConnection
 
 _service_input = cli.ServiceInput()
 _backtets_input = cli.BacktestInput()
@@ -54,15 +53,17 @@ def run_foreverbull(input: InputParser):
         while fb.running:
             time.sleep(0.5)
     except KeyboardInterrupt:
-        fb.stop()
-    
+        pass
+
+    fb.stop()
+
     if input.service_instance:
         input.service_instance.online = True
         input.service_instance.listen = True
         _run_input.broker.http.service.update_instance(input.service_instance)
     else:
-        pass # Make stop backtest
-        
+        _run_input.broker.http.backtest.stop_session(session.backtest_id, session.id)
+
 
 if __name__ == "__main__":
     foreverbull_core.logger.Logger()

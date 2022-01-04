@@ -2,10 +2,9 @@ import logging
 from multiprocessing import Process
 from multiprocessing.queues import Queue
 
-from foreverbull_core.models.worker import Instance
-
 from foreverbull.data import Database
 from foreverbull.worker.exceptions import WorkerException
+from foreverbull_core.models.worker import Instance
 
 
 class Worker(Process):
@@ -30,13 +29,14 @@ class Worker(Process):
         self.logger.debug("worker configured correctly")
 
     def _process_request(self, data):
+        self.logger.debug("sending request to worker", flush=True)
         return self._routes["stock_data"](data, self.database, **self.parameters)
 
     def run(self):
         self.database.connect()
         while True:
             try:
-                request = self._worker_requests.get(block=True, timeout=5)
+                request = self._worker_requests.get()
                 self.logger.debug("recieved request")
                 if request is None:
                     self.logger.info("request is None, shutting downn")
@@ -47,4 +47,5 @@ class Worker(Process):
                 self.logger.debug("processing done")
                 self._worker_responses.put(response)
             except Exception as e:
+                print("EXCEPTION: ", repr(e))
                 raise WorkerException(repr(e))
