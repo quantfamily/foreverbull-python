@@ -1,10 +1,9 @@
 from datetime import datetime
 
+from foreverbull import Foreverbull
 from foreverbull_core.models.finance import Asset, EndOfDay, Order
 from foreverbull_core.models.socket import Request, Response
 from foreverbull_core.models.worker import Instance, Parameter
-
-from foreverbull import Foreverbull
 
 
 def configured_worker(data, dataframe, ma_high, ma_low):

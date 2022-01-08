@@ -2,10 +2,7 @@ import argparse
 import importlib
 import os
 
-from foreverbull_core import cli
 from foreverbull_core.broker import Broker
-from foreverbull_core.models import service
-from foreverbull_core.models.backtest import Config as BacktestConfig
 from foreverbull_core.models.service import Instance as ServiceInstance
 
 

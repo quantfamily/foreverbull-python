@@ -3,7 +3,7 @@ import time
 from argparse import ArgumentParser
 
 import foreverbull_core.logger
-from foreverbull import Foreverbull, input_parser
+from foreverbull import Foreverbull
 from foreverbull.input_parser import InputError, InputParser
 from foreverbull_core import cli
 from foreverbull_core.models.backtest import Session

@@ -1,13 +1,12 @@
 from pathlib import Path
 
 import pytest
+from foreverbull.foreverbull import Broker, Foreverbull, InputError
+from foreverbull.input_parser import InputParser
 from foreverbull_core.http.service import Service
 from foreverbull_core.models.service import Instance
 from foreverbull_core.models.worker import Instance as WorkerInstance
 from pytest_mock import MockerFixture
-
-from foreverbull.foreverbull import Broker, Foreverbull, InputError
-from foreverbull.input_parser import InputParser
 
 
 def test_on():

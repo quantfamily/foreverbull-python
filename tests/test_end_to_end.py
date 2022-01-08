@@ -1,12 +1,12 @@
 from datetime import datetime
 
-from foreverbull_core.http.service import Service
-from foreverbull_core.models.finance import Asset, EndOfDay
-from foreverbull_core.models.socket import Request
-from foreverbull_core.models.worker import Instance, Parameter
-from foreverbull_core.models.service import Instance as ServiceInstance
 from foreverbull.foreverbull import Foreverbull
 from foreverbull.input_parser import InputParser
+from foreverbull_core.http.service import Service
+from foreverbull_core.models.finance import Asset, EndOfDay
+from foreverbull_core.models.service import Instance as ServiceInstance
+from foreverbull_core.models.socket import Request
+from foreverbull_core.models.worker import Instance, Parameter
 
 
 def on_message(data, dataframe, ma_high, ma_low):

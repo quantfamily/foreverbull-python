@@ -1,9 +1,8 @@
 from multiprocessing import Queue
 
+from foreverbull.worker.worker import Worker
 from foreverbull_core.models.socket import Request
 from foreverbull_core.models.worker import Instance
-
-from foreverbull.worker.worker import Worker
 
 
 def test_worker():

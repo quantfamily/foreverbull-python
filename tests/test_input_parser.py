@@ -1,16 +1,16 @@
-from argparse import ArgumentParser
 import os
-from foreverbull.input_parser import InputError, InputParser
-from _pytest.monkeypatch import MonkeyPatch
+from argparse import ArgumentParser
+
 import pytest
-import tempfile
+from _pytest.monkeypatch import MonkeyPatch
+from foreverbull.input_parser import InputError, InputParser
 
 
 def test_get_broker_defaults():
     broker = InputParser.get_broker()
     assert "127.0.0.1:8080" == broker._broker_host
     assert "127.0.0.1" == broker._local_host
- 
+
 
 def test_get_broker_env(monkeypatch: MonkeyPatch):
     monkeypatch.setenv("BROKER_URL", "foreverbull.com")
@@ -18,6 +18,7 @@ def test_get_broker_env(monkeypatch: MonkeyPatch):
     broker = InputParser.get_broker()
     assert "foreverbull.com" == broker._broker_host
     assert "localhost" == broker._local_host
+
 
 def test_get_backtest_id_env(monkeypatch: MonkeyPatch):
     parser = ArgumentParser()
@@ -29,6 +30,7 @@ def test_get_backtest_id_env(monkeypatch: MonkeyPatch):
     backtest_id = InputParser.get_backtest_id(args)
     assert "the-backtest-id" == backtest_id
 
+
 def test_get_backtest_id_arg():
     args = ["file.py", "--backtest-id", "the-backtest-id"]
     parser = ArgumentParser()
@@ -37,6 +39,7 @@ def test_get_backtest_id_arg():
     args = parser.parse_args(args)
     backtest_id = InputParser.get_backtest_id(args)
     assert "the-backtest-id" == backtest_id
+
 
 def test_get_backtest_id_none():
     args = ["file.py"]
@@ -47,6 +50,7 @@ def test_get_backtest_id_none():
     with pytest.raises(InputError, match="missing backtest_id"):
         InputParser.get_backtest_id(args)
 
+
 def test_get_service_instance(monkeypatch: MonkeyPatch):
     monkeypatch.setenv("SERVICE_ID", "the_service")
     monkeypatch.setenv("INSTANCE_ID", "the_instance")
@@ -54,14 +58,17 @@ def test_get_service_instance(monkeypatch: MonkeyPatch):
     assert "the_instance" == service_instance.id
     assert "the_service" == service_instance.service_id
 
+
 def test_get_service_instance_missing_env():
     service_instance = InputParser.get_service_instance()
-    assert None == service_instance
+    assert service_instance is None
+
 
 def test_add_arguments():
     parser = ArgumentParser()
     input_parser = InputParser()
     input_parser.add_arguments(parser)
+
 
 def test_parse():
     args = ["The_file.py", "--backtest-id", "b1234"]
@@ -74,7 +81,8 @@ def test_parse():
 
     assert "The_file.py" == input_parser.algo_file
     assert "b1234" == input_parser.backtest_id
-    
+
+
 def test_parse_missing_():
     args = ["--backtest-id", "b1234"]
 
@@ -85,6 +93,7 @@ def test_parse_missing_():
         args = parser.parse_args(args)
 
     assert 2 == e.value.code
+
 
 def test_import_algo_file():
     py_code = """
@@ -100,7 +109,7 @@ def hello(*args, **kwargs):
     input_parser = InputParser()
     with open("test_file.py", "w") as fw:
         fw.write(py_code)
-    
+
     input_parser.algo_file = "test_file"
     input_parser.import_algo_file()
 
