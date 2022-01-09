@@ -91,7 +91,6 @@ class Foreverbull(threading.Thread):
         rsp = None
         try:
             rsp = self._worker_responses.get(block=True, timeout=5)
-            print("I GOT RSP type: ", type(rsp))
         except Exception as e:
             self.logger.warning("exception when processing from worker: %s", repr(e))
             self.logger.exception(e)

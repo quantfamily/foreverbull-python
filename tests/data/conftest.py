@@ -27,7 +27,6 @@ def sample_portfolio():
         portfolio_value=2134.2,
         pnl=32.2,
         returns=22.2,
-        cash=222.4,
         start_date=date,
         current_date=date,
         positions_value=222.4,

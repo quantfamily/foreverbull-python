@@ -2,6 +2,7 @@ from foreverbull.data.stock_data import Asset, Base, Portfolio, Position
 from pandas import read_sql_query
 from sqlalchemy import create_engine
 from sqlalchemy.orm.session import sessionmaker
+from sqlalchemy import desc
 
 
 class Database:
@@ -31,7 +32,8 @@ class Database:
 
     def portfolio(self) -> Portfolio:
         with self.session_maker() as db_session:
-            portfolio = db_session.query(Portfolio).filter_by(session_id=self.session_id).first()
+            q = db_session.query(Portfolio).filter_by(session_id=self.session_id)
+            portfolio = q.order_by(desc(Portfolio.current_date)).first()
         return portfolio
 
     def get_position(self, asset: Asset) -> Position:

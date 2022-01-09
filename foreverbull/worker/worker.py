@@ -47,5 +47,5 @@ class Worker(Process):
                 self.logger.debug("processing done")
                 self._worker_responses.put(response)
             except Exception as e:
-                print("EXCEPTION: ", repr(e))
+                self.logger.exception(repr(e))
                 raise WorkerException(repr(e))
