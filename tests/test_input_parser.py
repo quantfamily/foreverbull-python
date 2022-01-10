@@ -1,50 +1,122 @@
-from foreverbull.input_parser import InputParser
+import os
+from argparse import ArgumentParser
+
+import pytest
+from _pytest.monkeypatch import MonkeyPatch
+from foreverbull.input_parser import InputError, InputParser
 
 
-def test_input_parser():
-    file_name = "file.py"
-    broker_url = "broker_url"
-    local_host = "local_host"
-    executors = "10"
-    args = [
-        "run",
-        "--file",
-        file_name,
-        "--broker-url",
-        broker_url,
-        "--local-host",
-        local_host,
-        "--executors",
-        executors,
-    ]
-    ip = InputParser()
-    parsed = ip.parse_input(args)
-    assert file_name == parsed.file
-    assert broker_url == parsed.broker_url
-    assert local_host == parsed.local_host
-    assert executors == parsed.executors
+def test_get_broker_defaults():
+    broker = InputParser.get_broker()
+    assert "127.0.0.1:8080" == broker._broker_host
+    assert "127.0.0.1" == broker._local_host
 
 
-def test_input_run_as_instance():
-    file_name = "file.py"
-    service_id = "service_id"
-    instance_id = "instance_id"
-
-    args = ["run", "--file", file_name, "as_instance", "--service-id", service_id, "--instance-id", instance_id]
-    ip = InputParser()
-    parsed = ip.parse_input(args)
-    assert file_name == parsed.file
-    assert service_id == parsed.service_id
-    assert instance_id == parsed.instance_id
+def test_get_broker_env(monkeypatch: MonkeyPatch):
+    monkeypatch.setenv("BROKER_URL", "foreverbull.com")
+    monkeypatch.setenv("LOCAL_HOST", "localhost")
+    broker = InputParser.get_broker()
+    assert "foreverbull.com" == broker._broker_host
+    assert "localhost" == broker._local_host
 
 
-def test_input_defaults():
-    file_name = "file.py"
-    ip = InputParser()
-    args = ["run", "--file", file_name]
-    parsed = ip.parse_input(args)
+def test_get_backtest_id_env(monkeypatch: MonkeyPatch):
+    parser = ArgumentParser()
+    input_parser = InputParser()
+    input_parser.add_arguments(parser)
+    args = parser.parse_args(["file.py"])
 
-    assert file_name == parsed.file
-    assert "127.0.0.1:8080" == parsed.broker_url
-    assert "127.0.0.1" == parsed.local_host
-    assert 1 == parsed.executors
+    monkeypatch.setenv("BACKTEST_ID", "the-backtest-id")
+    backtest_id = InputParser.get_backtest_id(args)
+    assert "the-backtest-id" == backtest_id
+
+
+def test_get_backtest_id_arg():
+    args = ["file.py", "--backtest-id", "the-backtest-id"]
+    parser = ArgumentParser()
+    input_parser = InputParser()
+    input_parser.add_arguments(parser)
+    args = parser.parse_args(args)
+    backtest_id = InputParser.get_backtest_id(args)
+    assert "the-backtest-id" == backtest_id
+
+
+def test_get_backtest_id_none():
+    args = ["file.py"]
+    parser = ArgumentParser()
+    input_parser = InputParser()
+    input_parser.add_arguments(parser)
+    args = parser.parse_args(args)
+    with pytest.raises(InputError, match="missing backtest_id"):
+        InputParser.get_backtest_id(args)
+
+
+def test_get_service_instance(monkeypatch: MonkeyPatch):
+    monkeypatch.setenv("SERVICE_ID", "the_service")
+    monkeypatch.setenv("INSTANCE_ID", "the_instance")
+    service_instance = InputParser.get_service_instance()
+    assert "the_instance" == service_instance.id
+    assert "the_service" == service_instance.service_id
+
+
+def test_get_service_instance_missing_env():
+    service_instance = InputParser.get_service_instance()
+    assert service_instance is None
+
+
+def test_add_arguments():
+    parser = ArgumentParser()
+    input_parser = InputParser()
+    input_parser.add_arguments(parser)
+
+
+def test_parse():
+    args = ["The_file.py", "--backtest-id", "b1234"]
+
+    parser = ArgumentParser()
+    input_parser = InputParser()
+    input_parser.add_arguments(parser)
+    args = parser.parse_args(args)
+    input_parser.parse(args)
+
+    assert "The_file.py" == input_parser.algo_file
+    assert "b1234" == input_parser.backtest_id
+
+
+def test_parse_missing_():
+    args = ["--backtest-id", "b1234"]
+
+    parser = ArgumentParser()
+    input_parser = InputParser()
+    input_parser.add_arguments(parser)
+    with pytest.raises(SystemExit) as e:
+        args = parser.parse_args(args)
+
+    assert 2 == e.value.code
+
+
+def test_import_algo_file():
+    py_code = """
+import foreverbull
+
+fb = foreverbull.Foreverbull()
+
+@fb.on("stock_data")
+def hello(*args, **kwargs):
+    pass
+
+"""
+    input_parser = InputParser()
+    with open("test_file.py", "w") as fw:
+        fw.write(py_code)
+
+    input_parser.algo_file = "test_file"
+    input_parser.import_algo_file()
+
+    os.remove("test_file.py")
+
+
+def test_import_algo_file_missing():
+    input_parser = InputParser()
+    with pytest.raises(InputError):
+        input_parser.import_algo_file()

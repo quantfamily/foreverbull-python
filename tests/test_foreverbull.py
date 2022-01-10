@@ -1,13 +1,10 @@
 from pathlib import Path
 
 import pytest
-from foreverbull_core.http.service import Service
-from foreverbull_core.models.service import Instance
+from foreverbull.foreverbull import Foreverbull
+from foreverbull.input_parser import InputError, InputParser
 from foreverbull_core.models.worker import Instance as WorkerInstance
 from pytest_mock import MockerFixture
-
-from foreverbull.foreverbull import Broker, Foreverbull, InputError
-from foreverbull.input_parser import InputParser
 
 
 def test_on():
@@ -29,8 +26,9 @@ def magic_func(*args):
     demo_file = Path("demo.py")
     with open(demo_file.name, "w") as fw:
         fw.write(pyfile)
-    fb = Foreverbull()
-    fb._setup_worker(demo_file.name)
+    input = InputParser()
+    input.algo_file = demo_file.name
+    input.import_algo_file()
 
     assert "magic_data" in Foreverbull._worker_routes
     demo_file.unlink()
@@ -38,12 +36,14 @@ def magic_func(*args):
 
 
 def test_setup_worker_negative():
-    fb = Foreverbull()
-    with pytest.raises(InputError):
-        fb._setup_worker("non_file.py")
+    input_parser = InputParser()
 
     with pytest.raises(InputError):
-        fb._setup_worker(False)
+        input_parser.import_algo_file()
+
+    with pytest.raises(InputError):
+        input_parser.algo_file = "non_file.py"
+        input_parser.import_algo_file()
 
 
 def test_configure_and_completed():
@@ -57,27 +57,10 @@ def test_configure_and_completed():
     assert len(fb._workers) == 0
 
 
-def test_start_stop_as_instance(mocker: MockerFixture):
+def test_start_stop(mocker: MockerFixture):
     input = InputParser()
-    input.instance = Instance(service_id="service-id", id="instance-id")
-    input.broker_url = "broker"
-    input.local_host = "127.0.0.1"
-    mocker.patch.object(Foreverbull, "_parse_input", return_value=input)
-    mocker.patch.object(Service, "update_instance")
-    mocker.patch.object(Foreverbull, "_setup_worker")
-    fb = Foreverbull()
-    fb.start()
-    fb.stop()
-    fb.join()
-
-
-def test_start_stop_as_run(mocker: MockerFixture):
-    input = InputParser()
-    input.backtest_id = "backtest_id"
-    mocker.patch.object(Foreverbull, "_parse_input", return_value=input)
-    mocker.patch.object(Broker, "run_test_run")
-    mocker.patch.object(Foreverbull, "_setup_worker")
-    fb = Foreverbull()
+    broker = input.get_broker()
+    fb = Foreverbull(broker.socket, 1)
 
     fb.start()
     fb.stop()

@@ -1,97 +1,62 @@
 import argparse
+import importlib
 import os
 
-from foreverbull_core import cli
-from foreverbull_core.models import service
+from foreverbull_core.broker import Broker
+from foreverbull_core.models.service import Instance as ServiceInstance
+
+
+class InputError(Exception):
+    pass
 
 
 class InputParser:
     def __init__(self) -> None:
-        self.broker_url = "127.0.0.1:8080"
-        self.local_host = "127.0.0.1"
-        self.executors = 1
-        self.service_id = None
-        self.instance_id = None
-        self.file = None
+        self.algo_file = None
+        self.broker = None
         self.backtest_id = None
+        self.service_instance = None
 
-        self.instance: service.Instance = None
+    @staticmethod
+    def get_broker() -> Broker:
+        broker_url = os.environ.get("BROKER_URL", "127.0.0.1:8080")
+        local_host = os.environ.get("LOCAL_HOST", "127.0.0.1")
+        return Broker(broker_url, local_host)
 
-        self._service_input = cli.ServiceInput()
-        self._backtets_input = cli.BacktestInput()
-        self._worker_input = cli.WorkerInput()
+    @staticmethod
+    def get_backtest_id(args: argparse.Namespace) -> str:
+        backtest_id = os.environ.get("BACKTEST_ID")
+        if args.backtest_id:
+            backtest_id = args.backtest_id
+        if backtest_id is None:
+            raise InputError("missing backtest_id")
+        return backtest_id
 
-        self.parser = argparse.ArgumentParser(
-            prog="foreverbull", formatter_class=argparse.ArgumentDefaultsHelpFormatter
-        )
-        subparser = self.parser.add_subparsers(dest="option")
-
-        system = subparser.add_parser("service", help="service")
-        self._service_input.add_arguments(system)
-        backtest = subparser.add_parser("backtest", help="backtest")
-        self._backtets_input.add_arguments(backtest)
-        worker = subparser.add_parser("worker", help="worker")
-        self._worker_input.add_arguments(worker)
-        run = subparser.add_parser("run", help="run algo")
-        self.add_arguments(run)
+    @staticmethod
+    def get_service_instance() -> ServiceInstance:
+        service_id = os.environ.get("SERVICE_ID")
+        instance_id = os.environ.get("INSTANCE_ID")
+        if service_id and instance_id:
+            return ServiceInstance(id=instance_id, service_id=service_id)
+        return None
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
-        parser.add_argument("--broker-url", help="URL of broker", default=self.broker_url)
-        parser.add_argument("--local-host", help="Local Address", default=self.local_host)
-        parser.add_argument("--executors", help="Number of Executors", default=self.executors)
-        parser.add_argument("--backtest-id", help="id of backtest", default=self.backtest_id)
-        parser.add_argument("--file", required=True, help="python- file to run")
-        subparser = parser.add_subparsers(dest="run_option")
-        as_instance = subparser.add_parser("as_instance", help="run backtest as service instance")
-        as_instance.add_argument("--service-id", help="service id", required=True)
-        as_instance.add_argument("--instance-id", help="instance id", required=True)
+        parser.add_argument("ALGO_FILE", help="you python- file to run", metavar="[your_file.py]")
+        parser.add_argument("--executors", help="Number of Executors", default="1")
+        parser.add_argument("--backtest-id", help="id of backtest")
 
-    def _parse_environment(self):
-        self.broker_url = os.environ.get("BROKER_URL", self.broker_url)
-        self.local_host = os.environ.get("LOCAL_HOST", self.local_host)
-        self.executors = os.environ.get("EXECUTORS", self.executors)
-        self.service_id = os.environ.get("SERVICE_ID", self.service_id)
-        self.instance_id = os.environ.get("INSTANCE_ID", self.instance_id)
+    def parse(self, args: argparse.Namespace) -> None:
+        self.algo_file = args.ALGO_FILE
+        self.executors = int(args.executors)
+        self.broker = InputParser.get_broker()
+        self.backtest_id = InputParser.get_backtest_id(args)
+        self.service_instance = InputParser.get_service_instance()
+        return
 
-    def parse(self, args: argparse.Namespace):
-        self._parse_environment()
-        self._parse_arguments(args)
-
-    def _parse_arguments(self, *arguments):
-        args = self.parser.parse_args(*arguments)
-        if args.option == "run":
-            self._parse_run(args)
-        elif args.option == "service":
-            return self._service_input.parse(args)
-        elif args.option == "backtest":
-            return self._backtets_input.parse(args)
-        elif args.option == "worker":
-            return self._worker_input.parse(args)
-        else:
-            self.parser.print_help()
-
-    def _parse_run(self, args: argparse.Namespace):
-        if args.file:
-            self.file = args.file
-        if args.broker_url and args.broker_url != self.parser.get_default("broker_url"):
-            self.broker_url = args.broker_url
-        if args.local_host and args.local_host != self.parser.get_default("local_host"):
-            self.local_host = args.local_host
-        if args.executors and args.executors != self.parser.get_default("executors"):
-            self.executors = args.executors
-        if args.run_option == "as_instance":
-            self._parse_run_backtest(args)
-        else:
-            self.backtest_id = args.backtest_id
-
-    def _parse_run_backtest(self, args: argparse.Namespace):
-        if args.service_id:
-            self.service_id = args.service_id
-        if args.instance_id:
-            self.instance_id = args.instance_id
-        self.instance = service.Instance(id=self.instance_id, service_id=self.service_id)
-
-    def parse_input(self, *arguments):
-        self._parse_environment()
-        self._parse_arguments(*arguments)
-        return self
+    def import_algo_file(self) -> None:
+        if not self.algo_file:
+            raise InputError("missing algo file")
+        try:
+            importlib.import_module(self.algo_file.replace("/", ".").split(".py")[0])
+        except ModuleNotFoundError as e:
+            raise InputError(str(e))
