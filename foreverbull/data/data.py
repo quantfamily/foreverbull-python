@@ -1,8 +1,7 @@
 from foreverbull.data.stock_data import Asset, Base, Portfolio, Position
 from pandas import read_sql_query
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, desc
 from sqlalchemy.orm.session import sessionmaker
-from sqlalchemy import desc
 
 
 class Database:

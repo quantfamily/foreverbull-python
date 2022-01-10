@@ -10,14 +10,10 @@ from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
 from foreverbull_core.socket.router import MessageRouter
 
 
-class InputError(Exception):
-    pass
-
-
 class Foreverbull(threading.Thread):
     _worker_routes = {}
 
-    def __init__(self, socket: SocketClient = None, executors: int = None):
+    def __init__(self, socket: SocketClient = None, executors: int = 1):
         self.socket = socket
         self.running = False
         self.logger = logging.getLogger(__name__)

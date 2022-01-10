@@ -1,4 +1,4 @@
-
+# TODO, below is just personal notes
 
 python -m foreverbull service create --name backtest_service --image lhjnilsson/zipline-foreverbull:latest --type backtest
 

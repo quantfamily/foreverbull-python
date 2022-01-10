@@ -7,7 +7,6 @@ from foreverbull_core.models.worker import Instance, Parameter
 
 
 def configured_worker(data, dataframe, ma_high, ma_low):
-    print("I AM:", data)
     assert ma_high == 64
     assert ma_low == 16
     asset = Asset(symbol="TSLA", exchange="QUANDL")
