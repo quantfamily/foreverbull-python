@@ -65,7 +65,7 @@ def run_foreverbull(input: InputParser):
         _run_input.broker.http.backtest.stop_session(session.backtest_id, session.id)
 
 
-if __name__ == "__main__":
+def main():
     foreverbull_core.logger.Logger()
     args = parser.parse_args()
 
@@ -84,3 +84,7 @@ if __name__ == "__main__":
     except InputError as e:
         print(e)
         parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

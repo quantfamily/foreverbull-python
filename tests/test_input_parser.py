@@ -1,4 +1,5 @@
 import os
+import socket
 from argparse import ArgumentParser
 
 import pytest
@@ -9,7 +10,7 @@ from foreverbull.input_parser import InputError, InputParser
 def test_get_broker_defaults():
     broker = InputParser.get_broker()
     assert "127.0.0.1:8080" == broker._broker_host
-    assert "127.0.0.1" == broker._local_host
+    assert socket.gethostbyname(socket.gethostname()) == broker._local_host
 
 
 def test_get_broker_env(monkeypatch: MonkeyPatch):
