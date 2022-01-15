@@ -1,6 +1,7 @@
 import argparse
 import importlib
 import os
+import socket
 
 from foreverbull_core.broker import Broker
 from foreverbull_core.models.service import Instance as ServiceInstance
@@ -20,7 +21,7 @@ class InputParser:
     @staticmethod
     def get_broker() -> Broker:
         broker_url = os.environ.get("BROKER_URL", "127.0.0.1:8080")
-        local_host = os.environ.get("LOCAL_HOST", "127.0.0.1")
+        local_host = os.environ.get("LOCAL_HOST", socket.gethostbyname(socket.gethostname()))
         return Broker(broker_url, local_host)
 
     @staticmethod
