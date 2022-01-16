@@ -42,26 +42,17 @@ def test_get_backtest_id_arg():
     assert "the-backtest-id" == backtest_id
 
 
-def test_get_backtest_id_none():
-    args = ["file.py"]
-    parser = ArgumentParser()
-    input_parser = InputParser()
-    input_parser.add_arguments(parser)
-    args = parser.parse_args(args)
-    with pytest.raises(InputError, match="missing backtest_id"):
-        InputParser.get_backtest_id(args)
-
-
 def test_get_service_instance(monkeypatch: MonkeyPatch):
     monkeypatch.setenv("SERVICE_ID", "the_service")
     monkeypatch.setenv("INSTANCE_ID", "the_instance")
-    service_instance = InputParser.get_service_instance()
+    broker = InputParser.get_broker()
+    service_instance = InputParser.get_service_instance(broker)
     assert "the_instance" == service_instance.id
     assert "the_service" == service_instance.service_id
 
 
 def test_get_service_instance_missing_env():
-    service_instance = InputParser.get_service_instance()
+    service_instance = InputParser.get_service_instance(InputParser.get_broker())
     assert service_instance is None
 
 

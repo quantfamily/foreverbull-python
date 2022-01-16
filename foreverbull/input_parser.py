@@ -29,17 +29,16 @@ class InputParser:
         backtest_id = os.environ.get("BACKTEST_ID")
         if args.backtest_id:
             backtest_id = args.backtest_id
-        if backtest_id is None:
-            raise InputError("missing backtest_id")
         return backtest_id
 
     @staticmethod
-    def get_service_instance() -> ServiceInstance:
+    def get_service_instance(broker: Broker) -> ServiceInstance:
         service_id = os.environ.get("SERVICE_ID")
         instance_id = os.environ.get("INSTANCE_ID")
-        if service_id and instance_id:
-            return ServiceInstance(id=instance_id, service_id=service_id)
-        return None
+        if service_id is None or instance_id is None:
+            return None
+        host = os.environ.get("LOCAL_HOST", socket.gethostbyname(socket.gethostname()))
+        return ServiceInstance(id=instance_id, service_id=service_id, host=host, port=broker.socket_config.port)
 
     def add_arguments(self, parser: argparse.ArgumentParser) -> None:
         parser.add_argument("ALGO_FILE", help="you python- file to run", metavar="[your_file.py]")
@@ -51,7 +50,7 @@ class InputParser:
         self.executors = int(args.executors)
         self.broker = InputParser.get_broker()
         self.backtest_id = InputParser.get_backtest_id(args)
-        self.service_instance = InputParser.get_service_instance()
+        self.service_instance = InputParser.get_service_instance(self.broker)
         return
 
     def import_algo_file(self) -> None:
