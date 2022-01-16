@@ -16,7 +16,7 @@ def test_simple_simulation(mocker):
     input_parser = InputParser()
     input_parser.algo_file = None
     input_parser.broker = input_parser.get_broker()
-    input_parser.service_instance = input_parser.get_service_instance()
+    input_parser.service_instance = input_parser.get_service_instance(input_parser.broker)
     fb = Foreverbull(input_parser.broker.socket, 1)
     fb._worker_routes["stock_data"] = on_message
 

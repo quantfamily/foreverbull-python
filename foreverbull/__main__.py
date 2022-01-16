@@ -37,13 +37,16 @@ def run_foreverbull(input: InputParser):
             input.service_instance.online = True
             input.service_instance.listen = True
             _run_input.broker.http.service.update_instance(input.service_instance)
-        else:
+        elif input.backtest_id:
             session = Session(backtest_id=_run_input.backtest_id, worker_count=0, run_automaticlly=False)
             conn = RawConnection(host=_run_input.broker._local_host, port=_run_input.broker.socket.config.port)
             session = _run_input.broker.http.backtest.create_session(_run_input.backtest_id, session=session)
             _run_input.broker.http.backtest.setup_session(session.backtest_id, session.id)
             _run_input.broker.http.backtest.configure_session(session.backtest_id, session.id, conn)
             _run_input.broker.http.backtest.run_session(session.backtest_id, session.id)
+        else:
+            raise InputError("neither service_instance or backtest-id defined")
+
     except Exception as e:
         logging.error(f"unable to call backend: {repr(e)}")
         fb.stop()
