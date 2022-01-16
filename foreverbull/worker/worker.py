@@ -29,7 +29,7 @@ class Worker(Process):
         self.logger.debug("worker configured correctly")
 
     def _process_request(self, data):
-        self.logger.debug("sending request to worker", flush=True)
+        self.logger.debug("sending request to worker")
         return self._routes["stock_data"](data, self.database, **self.parameters)
 
     def run(self):
