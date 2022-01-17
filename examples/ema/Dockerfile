@@ -4,7 +4,7 @@ RUN apt-get update
 RUN apt-get install cmake build-essential python-dev -y
 
 RUN pip install pip --upgrade
-RUN pip install foreverbull>=0.0.13
+RUN pip install foreverbull --upgrade
 
 RUN curl -L -o ta-lib-0.4.0-src.tar.gz  http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz 
 RUN tar xvfz ta-lib-0.4.0-src.tar.gz

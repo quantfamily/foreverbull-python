@@ -1,16 +1,19 @@
 from foreverbull.data.stock_data import Asset, Base, Portfolio, Position
+from foreverbull_core.models.worker import Database as DatabaseConfiguration
 from pandas import read_sql_query
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm.session import sessionmaker
 
 
 class Database:
-    def __init__(self, session_id, db_conf=None):
+    def __init__(self, session_id, db_conf: DatabaseConfiguration = None):
         self.db_conf = db_conf
         if db_conf is None:
             self.uri = "sqlite:///:memory:"
         else:
-            self.uri = f"postgresql://{db_conf.user}:{db_conf.password}@127.0.0.1:{db_conf.port}/{db_conf.dbname}"
+            self.uri = (
+                f"postgresql://{db_conf.user}:{db_conf.password}@{db_conf.netloc}:{db_conf.port}/{db_conf.dbname}"
+            )
         self.session_id = session_id
 
     def connect(self):
