@@ -27,10 +27,21 @@ run = subparser.add_parser("run", help="run algo")
 _run_input.add_arguments(run)
 
 
+def sleep_till_keyboard_interrupt(fb: Foreverbull):
+    try:
+        while fb.running:
+            time.sleep(0.5)
+    except KeyboardInterrupt:
+        logging.info("Keyboard- Interrupt recieved exiting")
+
+
 def run_foreverbull(input: InputParser):
     fb = Foreverbull(_run_input.broker.socket, _run_input.executors)
     input.import_algo_file()
     fb.start()
+
+    if input.service_instance is None and input.backtest_id is None:
+        raise InputError("neither service_instance or backtest-id defined")
 
     try:
         if input.service_instance:
@@ -44,25 +55,17 @@ def run_foreverbull(input: InputParser):
             _run_input.broker.http.backtest.setup_session(session.backtest_id, session.id)
             _run_input.broker.http.backtest.configure_session(session.backtest_id, session.id, conn)
             _run_input.broker.http.backtest.run_session(session.backtest_id, session.id)
-        else:
-            raise InputError("neither service_instance or backtest-id defined")
-
     except Exception as e:
         logging.error(f"unable to call backend: {repr(e)}")
         fb.stop()
         return
 
-    try:
-        while fb.running:
-            time.sleep(0.5)
-    except KeyboardInterrupt:
-        pass
-
+    sleep_till_keyboard_interrupt(fb)
     fb.stop()
 
     if input.service_instance:
-        input.service_instance.online = True
-        input.service_instance.listen = True
+        input.service_instance.online = False
+        input.service_instance.listen = False
         _run_input.broker.http.service.update_instance(input.service_instance)
     else:
         _run_input.broker.http.backtest.stop_session(session.backtest_id, session.id)
