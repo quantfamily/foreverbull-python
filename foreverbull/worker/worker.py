@@ -10,7 +10,6 @@ from foreverbull_core.models.worker import Instance, Parameter
 
 class Worker(Process):
     def __init__(self, worker_requests: Queue, worker_responses: Queue, configuration: Instance, **routes):
-        super(Worker, self).__init__()
         self.logger = logging.getLogger(__name__)
         self.logger.debug("setting up worker")
         self._worker_requests = worker_requests
@@ -22,8 +21,9 @@ class Worker(Process):
         self.parameters = {}
         if configuration.parameters:
             self.logger.debug("setting up parameters")
-            self._setup_parameters(configuration.parameters)
+            self._setup_parameters(*configuration.parameters)
         self.logger.info("worker configured correctly")
+        super(Worker, self).__init__()
 
     def _setup_parameters(self, *parameters: Parameter):
         for parameter in parameters:
@@ -64,7 +64,7 @@ class WorkerHandler:
     def locked(self) -> bool:
         return self._lock.locked()
 
-    def acquire(self, blocking: bool, timeout: float) -> bool:
+    def acquire(self, blocking: bool = False, timeout: float = -1) -> bool:
         return self._lock.acquire(blocking=blocking, timeout=timeout)
 
     def release(self) -> None:

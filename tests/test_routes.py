@@ -19,7 +19,7 @@ def test_configure(mocker):
     request = Request(task="configure", data=Instance(session_id="abc123"))
     response = Response(task="configure")
     assert fb._routes(request) == response
-    fb._backtest_completed()
+    fb.stop()
 
 
 def test_stock_data_configured():
@@ -52,7 +52,7 @@ def test_stock_data_configured():
     req = Request(task="stock_data", data=eod)
     rsp = fb._routes(req)
     assert rsp.error is None
-    fb._backtest_completed()
+    fb.stop()
 
 
 def test_stock_data_not_configured():

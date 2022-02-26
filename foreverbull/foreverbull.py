@@ -4,40 +4,12 @@ from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Queue
 
 from foreverbull.worker.worker import WorkerHandler
-from foreverbull_core.models.finance import EndOfDay, Order
+from foreverbull_core.models.finance import EndOfDay
+from foreverbull_core.models.socket import Request
 from foreverbull_core.models.worker import Instance
 from foreverbull_core.socket.client import ContextClient, SocketClient
 from foreverbull_core.socket.exceptions import SocketClosed, SocketTimeout
 from foreverbull_core.socket.router import MessageRouter
-
-
-class Request(threading.Thread):
-    def __init__(self, context_socket):
-        self.context_socket = context_socket
-
-    def run(self):
-        message = self.context_socket.recv()
-        rsp = self._routes(message)
-        self.logger.debug(f"recieved task: {rsp.task}")
-        self.context_socket.send(rsp)
-        self.logger.debug(f"reply sent for task: {rsp.task}")
-        self.context_socket.close()
-
-    def _stock_data(self, message: EndOfDay):
-        if len(self._workers) == 0:
-            raise Exception("workers are not initialized")
-        self._worker_requests.put(message)
-        rsp = None
-        try:
-            rsp = self._worker_responses.get(block=True, timeout=5)
-        except Exception as e:
-            self.logger.warning("exception when processing from worker: %s", repr(e))
-            self.logger.exception(e)
-            pass
-        if rsp is not None and type(rsp) is not Order:
-            self.logger.error("unexpected response from worker: %s", repr(rsp))
-            raise Exception("unexpected response from worker: %s", repr(rsp))
-        return rsp
 
 
 class Foreverbull(threading.Thread):
@@ -52,7 +24,7 @@ class Foreverbull(threading.Thread):
         self._workers: list[WorkerHandler] = []
         self.executors = executors
         self._routes = MessageRouter()
-        self._routes.add_route(self._backtest_completed, "backtest_completed")
+        self._routes.add_route(self.stop, "backtest_completed")
         self._routes.add_route(self._configure, "configure", Instance)
         self._routes.add_route(self._stock_data, "stock_data", EndOfDay)
         self._request_thread: ThreadPoolExecutor = ThreadPoolExecutor(max_workers=5)
@@ -72,24 +44,24 @@ class Foreverbull(threading.Thread):
         while self.running:
             try:
                 context_socket = self.socket.new_context()
-                self._request_thread.submit(self._process, context_socket)
-            except SocketClosed:
+                request = context_socket.recv()
+                self._request_thread.submit(self._process_request, context_socket, request)
+            except (SocketClosed, SocketTimeout):
                 self.logger.info("main socket closed, exiting")
                 return
         self.socket.close()
         self.logger.info("exiting")
 
-    def _process(self, socket: ContextClient):
+    def _process_request(self, socket: ContextClient, request: Request):
         try:
-            message = socket.recv()
-            rsp = self._routes(message)
-            self.logger.debug(f"recieved task: {rsp.task}")
-            socket.send(rsp)
-            self.logger.debug(f"reply sent for task: {rsp.task}")
+            self.logger.debug(f"recieved task: {request.task}")
+            response = self._routes(request)
+            socket.send(response)
+            self.logger.debug(f"reply sent for task: {response.task}")
             socket.close()
         except (SocketTimeout, SocketClosed) as exc:
-            self.logger.error("Unable to process context socket")
-            self.logger.exception(exc)
+            self.logger.warning(f"Unable to process context socket: {exc}")
+            pass
         except Exception as exc:
             self.logger.error("unknown excetion when processing context socket")
             self.logger.exception(exc)
@@ -97,17 +69,9 @@ class Foreverbull(threading.Thread):
     def stop(self):
         self.logger.info("Stopping instance")
         self.running = False
-        self._worker_requests.put(None)
         for worker in self._workers:
-            worker.join()
-
-    def _backtest_completed(self):
-        self._worker_requests.put(None)
-        for w in self._workers:
-            w.join()
+            worker.stop()
         self._workers = []
-        self.running = False
-        return
 
     def _configure(self, instance_configuration: Instance):
         for _ in range(self.executors):
@@ -121,6 +85,8 @@ class Foreverbull(threading.Thread):
                 continue
             if worker.acquire():
                 break
+        else:
+            raise Exception("workers are not initialized")
 
         try:
             worker.process(message)
