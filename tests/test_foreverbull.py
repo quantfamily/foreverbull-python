@@ -53,7 +53,7 @@ def test_configure_and_completed():
     fb.executors = 2
     fb._configure(config)
     assert len(fb._workers) == 2
-    fb._backtest_completed()
+    fb.stop()
     assert len(fb._workers) == 0
 
 
